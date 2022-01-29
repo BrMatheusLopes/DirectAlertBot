@@ -1,11 +1,6 @@
 using Microsoft.AspNetCore.Hosting;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Logging;
 using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
 
 namespace DirectAlertBot
 {
@@ -20,7 +15,16 @@ namespace DirectAlertBot
             Host.CreateDefaultBuilder(args)
                 .ConfigureWebHostDefaults(webBuilder =>
                 {
-                    webBuilder.UseStartup<Startup>();
+                    var port = Environment.GetEnvironmentVariable("PORT");
+                    if (string.IsNullOrEmpty(port))
+                    {
+                        webBuilder.UseStartup<Startup>();
+                    }
+                    else
+                    {
+                        webBuilder.UseStartup<Startup>()
+                            .UseUrls("http://*:" + port);
+                    }
                 });
     }
 }

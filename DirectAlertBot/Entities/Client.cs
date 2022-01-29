@@ -1,6 +1,6 @@
 ﻿using System.ComponentModel.DataAnnotations;
 
-namespace DirectAlertBot.Models
+namespace DirectAlertBot.Entities
 {
     public class Client : BaseEntity
     {
@@ -16,7 +16,7 @@ namespace DirectAlertBot.Models
         [MaxLength(32)]
         public string? Username { get; set; }
 
-        [MaxLength(5)]
-        public string LanguageCode { get; set; }
+        [MaxLength(12)]
+        public string? LanguageCode { get; set; }
     }
 }

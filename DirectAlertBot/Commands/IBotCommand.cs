@@ -8,7 +8,6 @@ namespace DirectAlertBot.Commands
     {
         string Name { get; }
         string Description { get; }
-
         Task Execute(ITelegramBotClient botClient, CommandContext context, string[] args);
     }
 }

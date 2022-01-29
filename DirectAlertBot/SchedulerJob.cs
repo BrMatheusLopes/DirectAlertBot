@@ -1,90 +1,99 @@
-﻿using DirectAlertBot.Jobs;
-using Microsoft.Extensions.Logging;
+﻿using DirectAlertBot.Interfaces;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 
 namespace DirectAlertBot
 {
-    public class SchedulerJob
+    public static class SchedulerJob
     {
-        private readonly List<IJob> _jobs = new List<IJob>();
-        private readonly ILogger<SchedulerJob> _logger;
-        private bool _isRunning;
+        private const uint _maxTimerInterval = uint.MaxValue;
+        private static readonly List<IJob> _jobs = new List<IJob>();
+        private static readonly List<Action> _actions = new List<Action>();
+        private static Timer _timer = new Timer(state => Run(), null, Timeout.Infinite, Timeout.Infinite);
 
-        public SchedulerJob(ILogger<SchedulerJob> logger)
+        public static void Start()
         {
-            _logger = logger;
+            Run();
         }
 
-        public async void Start(CancellationToken cancellationToken = default)
+        public static void Stop()
         {
-            _logger.LogInformation("SchedulerJob started...");
-            await Run(cancellationToken);
+            _timer.Change(Timeout.Infinite, Timeout.Infinite);
         }
 
-        public void Stop()
+        public static IEnumerable<IJob> GetAllJobs()
         {
-            _logger.LogInformation("SchedulerJob stopped...");
-            _isRunning = false;
+            return _jobs;
         }
 
-        private async Task Run(CancellationToken cancellationToken)
+        private static void Run()
         {
-            if (_isRunning)
-                return;
+            _timer.Change(Timeout.Infinite, Timeout.Infinite);
 
-            _isRunning = true;
-            while (_isRunning)
+            try
             {
-                try
+                if (!_jobs.Any())
+                    return;
+
+                var firstJob = _jobs.First();
+                var timeUntilTrigger = (firstJob.TriggerTime - DateTime.UtcNow);
+                if (timeUntilTrigger <= TimeSpan.Zero)
                 {
-                    foreach (IJob job in _jobs)
+                    Task.Factory.StartNew(() =>
                     {
-                        cancellationToken.ThrowIfCancellationRequested();
-
-                        TimeSpan timeUntilTrigger = job.TriggerTime - DateTime.Now;
-                        if (timeUntilTrigger <= TimeSpan.Zero)
-                        {
-                            await job.Execute();
-                            job.Finished = true;
-                        }
-
-                        await Task.Delay(100, cancellationToken);
-                    }
-
-                    await RemoveFinishedScheduledJobs();
+                        firstJob.Execute();
+                    });
+                    RemoveFinishedScheduledJob(firstJob);
                 }
-                catch (OperationCanceledException ex)
+
+                var interval = timeUntilTrigger;
+                if (interval <= TimeSpan.Zero)
                 {
-                    _logger.LogError($"SchedulerJob: {ex.Message}");
-                    Stop();
-                    break;
+                    Run();
+                    return;
                 }
-                catch (Exception ex)
+                else
                 {
-                    _logger.LogError($"SchedulerJob Unexpected Error: {ex.Message}");
-                }
+                    if (interval.TotalMilliseconds > _maxTimerInterval)
+                        interval = TimeSpan.FromMilliseconds(_maxTimerInterval);
 
-                await Task.Delay(TimeSpan.FromSeconds(1), cancellationToken);
+                    _timer.Change(interval, interval);
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"SchedulerJob Unexpected Error: {ex}");
             }
         }
 
-        private async Task RemoveFinishedScheduledJobs()
-        {
-            _jobs.RemoveAll(x => x.Finished);
-            await Task.CompletedTask;
-        }
-
-        public void AddJob(IJob job)
-        {
-            _jobs.Add(job);
-        }
-
-        public void RemoveJob(IJob job)
+        private static void RemoveFinishedScheduledJob(IJob job)
         {
             _jobs.Remove(job);
+        }
+
+        public static void AddJob(IJob job)
+        {
+            if (job is null)
+                throw new ArgumentNullException(nameof(job));
+
+            _jobs.Add(job);
+            _jobs.Sort(CompareTriggerTime);
+            Run();
+        }
+
+        public static void RemoveJob(IJob job)
+        {
+            _jobs.Remove(job);
+            _jobs.Sort(CompareTriggerTime);
+            Run();
+        }
+
+        private static int CompareTriggerTime(IJob x, IJob y)
+        {
+            return DateTime.Compare(x.TriggerTime, y.TriggerTime);
         }
     }
 }

@@ -1,30 +1,9 @@
-﻿using DirectAlertBot.Models;
+﻿using DirectAlertBot.Entities;
 using System;
-using System.Threading.Tasks;
 using Telegram.Bot;
 
 namespace DirectAlertBot.Jobs
 {
-    public interface IJob
-    {
-        Task Execute();
-        DateTime TriggerTime { get;}
-        bool Finished { get; set; }
-    }
-
-    public abstract class Job : IJob
-    {
-        protected Job(DateTime triggerTime)
-        {
-            TriggerTime = triggerTime;
-        }
-
-        public DateTime TriggerTime { get; }
-        public bool Finished { get; set; }
-
-        public abstract Task Execute();
-    }
-
     public class TelegramJob : Job
     {
         private readonly ITelegramBotClient _botClient;
@@ -36,14 +15,11 @@ namespace DirectAlertBot.Jobs
             _alert = alert;
         }
 
-        public override async Task Execute()
-        {
-            await SendTextMessageAsync(_alert.ChatId, _alert.Text);
-        }
+        public Alert Alert => _alert;
 
-        private async Task SendTextMessageAsync(long chatId, string text)
+        public override async void Execute()
         {
-            await _botClient.SendTextMessageAsync(chatId, text);
+            await _botClient.SendTextMessageAsync(_alert.ChatId, _alert.Text);
         }
     }
 }

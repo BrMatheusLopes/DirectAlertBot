@@ -9,7 +9,7 @@ namespace DirectAlertBot.Extensions
     {
         public static long GetUserId(this Message message)
         {
-            return message.From.Id;
+            return message.From!.Id;
         }
 
         public static long GetChatId(this Message message)
@@ -31,30 +31,30 @@ namespace DirectAlertBot.Extensions
         public static string[] GetArgs(this string input)
         {
             return input.Split(' ', System.StringSplitOptions.RemoveEmptyEntries)
-                .Select(x => x.ToLower())
+                .Select(x => x)
                 .ToArray();
         }
 
-        public static string ArgsToText(this string[] input, int index)
+        public static string ArgsToText(this string[] input, int startIndex)
         {
             StringBuilder sb = new StringBuilder();
-            for (int i = index; i < input.Length; i++)
+            for (int i = startIndex; i < input.Length; i++)
             {
                 sb.Append($"{input[i]} ");
             }
-            return sb.ToString();
+            return sb.ToString().Trim();
         }
 
         public static string GetMessageTextWithoutCommand(this Message message)
         {
             var commandLength = message.Entities?.FirstOrDefault(x => x.Type == MessageEntityType.BotCommand)?.Length ?? 0;
-            return message.Text.Substring(commandLength).Trim();
+            return message.Text?.Substring(commandLength).Trim() ?? "";
         }
 
         public static string GetCommandName(this Message message)
         {
             var commandLength = message.Entities?.FirstOrDefault(x => x.Type == MessageEntityType.BotCommand)?.Length ?? 0;
-            var commandName = message.Text.Substring(0, commandLength);
+            var commandName = message.Text?.Substring(0, commandLength) ?? "";
 
             return commandName.Length > 0 ? commandName.Substring(1) : commandName;
         }

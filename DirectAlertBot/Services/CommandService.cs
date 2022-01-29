@@ -1,5 +1,7 @@
 ﻿using DirectAlertBot.Commands;
+using System;
 using System.Collections.Generic;
+using DirectAlertBot.Interfaces;
 
 namespace DirectAlertBot.Services
 {
@@ -12,13 +14,17 @@ namespace DirectAlertBot.Services
                 new AboutCommand(),
                 new AlertCommand(),
                 new CancelCommand(),
-                new HelpCommand()
+                new HelpCommand(),
+                new StartCommand()
             };
         }
 
-        public bool TryGetCommand(string name, out IBotCommand command)
+        public IEnumerable<IBotCommand> GetAllCommands()
+            => _commands;
+
+        public bool TryGetCommand(string name, out IBotCommand? command)
         {
-            command = _commands.Find(x => x.Name == name);
+            command = _commands.Find(x => x.Name.Equals(name, StringComparison.InvariantCultureIgnoreCase));
             return command != null;
         }
     }
